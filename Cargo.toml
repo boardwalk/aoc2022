@@ -1,0 +1,16 @@
+[workspace]
+members = ["crates/*"]
+resolver = "2"
+
+[workspace.dependencies]
+
+# debug = false is roughly twice as fast the default
+# so it you don't use stack traces and such, go for it
+[profile.dev]
+debug = false
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "z"
+panic = "abort"
