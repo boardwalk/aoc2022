@@ -1,9 +1,8 @@
-use anyhow::Error;
 use itertools::Itertools as _;
 
 pub const PART1: bool = false;
 
-fn main() -> Result<(), Error> {
+fn main() {
     let mut elves = std::io::stdin()
         .lines()
         .map(|line| line.unwrap())
@@ -18,6 +17,4 @@ fn main() -> Result<(), Error> {
     let topn = if PART1 { 1 } else { 3 };
     let top_calories: u32 = elves.iter().rev().take(topn).sum();
     println!("{top_calories}");
-
-    Ok(())
 }
