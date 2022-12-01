@@ -15,6 +15,6 @@ fn main() {
     elves.sort_unstable();
 
     let topn = if PART1 { 1 } else { 3 };
-    let top_calories: u32 = elves.iter().rev().take(topn).sum();
+    let top_calories = elves.iter().rev().take(topn).sum::<u32>();
     println!("{top_calories}");
 }
