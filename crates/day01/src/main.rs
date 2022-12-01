@@ -23,20 +23,14 @@ fn main() -> Result<(), Error> {
 
     // println!("{elves:?}");
 
-    if PART1 {
-        let top_calories: u32 = elves
-            .iter()
-            .map(|elf| elf.calories.iter().sum())
-            .max()
-            .unwrap();
+    let mut total_calories: Vec<_> = elves.iter().map(|elf| elf.calories.iter().sum()).collect();
+    total_calories.sort_unstable();
 
+    if PART1 {
+        let top_calories: u32 = total_calories.iter().rev().take(1).sum();
         println!("{top_calories}");
     } else {
-        let mut total_calories: Vec<u32> =
-            elves.iter().map(|elf| elf.calories.iter().sum()).collect();
-        total_calories.sort_unstable();
         let top3_calories: u32 = total_calories.iter().rev().take(3).sum();
-
         println!("{top3_calories}");
     }
 
