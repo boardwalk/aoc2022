@@ -1,4 +1,5 @@
 use anyhow::Error;
+use itertools::Itertools as _;
 
 pub const PART1: bool = false;
 
@@ -8,26 +9,17 @@ struct Elf {
 }
 
 fn main() -> Result<(), Error> {
-    let mut elves: Vec<Elf> = Vec::new();
-    let mut cur_elf = None;
-
-    for line in std::io::stdin().lines() {
-        let line = line?;
-
-        if line.is_empty() {
-            if let Some(elf) = cur_elf.take() {
-                elves.push(elf);
-            }
-        } else {
-            let elf = cur_elf.get_or_insert_with(Default::default);
-            let calories: u32 = line.parse()?;
-            elf.calories.push(calories);
-        }
-    }
-
-    if let Some(elf) = cur_elf.take() {
-        elves.push(elf);
-    }
+    let elves = std::io::stdin()
+        .lines()
+        .map(|line| line.unwrap())
+        .group_by(|line| line.is_empty())
+        .into_iter()
+        .filter_map(|(is_empty, group)| if is_empty { None } else { Some(group) })
+        .map(|group| {
+            let calories = group.map(|line| line.parse().unwrap()).collect();
+            Elf { calories }
+        })
+        .collect::<Vec<_>>();
 
     // println!("{elves:?}");
 
