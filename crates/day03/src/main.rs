@@ -17,14 +17,13 @@ fn make_bit_set(line: &str) -> u64 {
 }
 
 fn sum_bits(mut x: u64) -> u32 {
-    let mut base = 0;
     let mut sum = 0;
+    let mut n = 0;
 
-    while x > 0 {
-        let tz = x.trailing_zeros();
-        x >>= tz + 1;
-        base += tz;
-        sum += base;
+    while (x >> n) > 0 {
+        let tz = (x >> n).trailing_zeros();
+        n += tz + 1;
+        sum += n - 1;
     }
 
     sum
