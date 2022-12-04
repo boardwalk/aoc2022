@@ -7,12 +7,7 @@ fn totally_includes(a: &RangeInclusive<u32>, b: &RangeInclusive<u32>) -> bool {
 }
 
 fn overlaps(a: &RangeInclusive<u32>, b: &RangeInclusive<u32>) -> bool {
-    // I think this can be simplified a bit
-    let a_before_b = a.start() <= b.start() && a.end() >= b.start();
-    let a_after_b = a.start() <= b.end() && a.end() >= b.end();
-    let a_within_b = a.start() >= b.start() && a.end() <= b.end();
-    let b_within_a = b.start() >= a.start() && b.end() <= a.end();
-    a_before_b || a_after_b || a_within_b || b_within_a
+    !(a.end() < b.start() || a.start() > b.end())
 }
 
 fn main() {
