@@ -4,15 +4,7 @@ use std::collections::HashSet;
 const PART1: bool = false;
 
 fn all_different(chars: &[char]) -> bool {
-    let mut set = HashSet::new();
-
-    for ch in chars {
-        if !set.insert(ch) {
-            return false;
-        }
-    }
-
-    true
+    chars.into_iter().collect::<HashSet<_>>().len() == chars.len()
 }
 
 fn main() -> Result<(), Error> {
