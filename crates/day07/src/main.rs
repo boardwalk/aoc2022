@@ -80,32 +80,26 @@ fn main() -> Result<(), Error> {
             .map(|e| e.size)
             .sum::<u32>();
 
-        dir_sizes.push((dir.clone(), size));
+        dir_sizes.push(size);
     }
+
+    dir_sizes.sort_unstable();
 
     println!("{dir_sizes:?}");
 
     let result = if PART1 {
         // calculate sum of directories with size <= 100000
         dir_sizes
-            .iter()
-            .filter(|(_dir, size)| *size <= 100000)
-            .map(|(_dir, size)| size)
+            .into_iter()
+            .take_while(|size| *size <= 100000)
             .sum::<u32>()
     } else {
-        dir_sizes.sort_unstable_by_key(|(_dir, size)| *size);
-
         // calculate amount of space we need to free
-        let total_avail = 70_000_000;
-        let total_needed = 30_000_000;
-        let total_used = dir_sizes.last().unwrap().1; // the root will always be the largest directory
-        let total_free = total_avail - total_used;
-        let min_to_free = total_needed - total_free;
+        let min_to_free = dir_sizes.last().unwrap() - 40_000_000; // the root will always be the largest directory
 
         // find the size of the smallest directory to remove that will recover the needed space
         dir_sizes
-            .iter()
-            .map(|(_dir, size)| *size)
+            .into_iter()
             .filter(|size| *size >= min_to_free)
             .next()
             .unwrap()
