@@ -1,4 +1,8 @@
+#![feature(generators, generator_trait)]
+
 use anyhow::Error;
+use std::ops::{Generator, GeneratorState};
+use std::pin::Pin;
 use std::{cmp, fmt};
 
 const PART1: bool = false;
@@ -20,6 +24,131 @@ impl fmt::Debug for Array2D {
 
         Ok(())
     }
+}
+
+enum Action {
+    Visit(usize, usize),
+    Reset,
+}
+
+struct IterGenerator<G>(G);
+
+impl<G> Iterator for IterGenerator<G>
+where
+    G: Generator<Return = ()> + Unpin,
+{
+    type Item = G::Yield;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match Pin::new(&mut self.0).resume(()) {
+            GeneratorState::Yielded(yielded) => Some(yielded),
+            GeneratorState::Complete(()) => None,
+        }
+    }
+}
+
+fn from_left(width: usize, height: usize) -> impl Iterator<Item = Action> {
+    IterGenerator(move || {
+        for y in 0..height {
+            for x in 0..width {
+                yield Action::Visit(x, y)
+            }
+
+            yield Action::Reset
+        }
+    })
+}
+
+fn from_right(width: usize, height: usize) -> impl Iterator<Item = Action> {
+    IterGenerator(move || {
+        for y in 0..height {
+            for x in (0..width).rev() {
+                yield Action::Visit(x, y)
+            }
+
+            yield Action::Reset
+        }
+    })
+}
+
+fn from_top(width: usize, height: usize) -> impl Iterator<Item = Action> {
+    IterGenerator(move || {
+        for x in 0..width {
+            for y in 0..height {
+                yield Action::Visit(x, y)
+            }
+
+            yield Action::Reset
+        }
+    })
+}
+
+fn from_bottom(width: usize, height: usize) -> impl Iterator<Item = Action> {
+    IterGenerator(move || {
+        for x in 0..width {
+            for y in (0..height).rev() {
+                yield Action::Visit(x, y)
+            }
+
+            yield Action::Reset
+        }
+    })
+}
+
+fn do_max_height<F, I>(arr: &Array2D, f: F) -> Array2D
+where
+    F: FnOnce(usize, usize) -> I,
+    I: Iterator<Item = Action>,
+{
+    let mut res = Array2D::new(arr.width(), arr.height(), || 0);
+    let mut max_height = 0;
+
+    for action in f(arr.width(), arr.height()) {
+        match action {
+            Action::Visit(x, y) => {
+                res.set(x, y, max_height);
+                max_height = cmp::max(max_height, arr.get(x, y));
+            }
+            Action::Reset => {
+                max_height = 0;
+            }
+        }
+    }
+
+    res
+}
+
+fn do_max_dist<F, I>(arr: &Array2D, f: F) -> Array2D
+where
+    F: FnOnce(usize, usize) -> I,
+    I: Iterator<Item = Action>,
+{
+    let mut res = Array2D::new(arr.width(), arr.height(), || 0);
+    let mut tree_dists = Vec::new();
+    tree_dists.resize(10, 0);
+
+    for action in f(arr.width(), arr.height()) {
+        match action {
+            Action::Visit(x, y) => {
+                res.set(x, y, tree_dists[(arr.get(x, y) - 1) as usize]);
+
+                for h in 0..10 {
+                    if h <= arr.get(x, y) - 1 {
+                        tree_dists[h as usize] = 1;
+                    } else {
+                        tree_dists[h as usize] += 1;
+                    }
+                }
+            }
+            Action::Reset => {
+                for dist in &mut tree_dists {
+                    *dist = 0;
+                }
+            }
+        }
+    }
+
+    res
 }
 
 impl Array2D {
@@ -83,49 +212,10 @@ fn main() -> Result<(), Error> {
     println!("trees\n{trees:?}");
 
     if PART1 {
-        // FROM_LEFT
-        let mut from_left = Array2D::new(trees.width(), trees.height(), Default::default);
-
-        for y in 0..trees.height() {
-            let mut max_height = 0;
-            for x in 0..trees.width() {
-                from_left.set(x, y, max_height);
-                max_height = cmp::max(max_height, trees.get(x, y));
-            }
-        }
-
-        // FROM_RIGHT
-        let mut from_right = Array2D::new(trees.width(), trees.height(), Default::default);
-
-        for y in 0..trees.height() {
-            let mut max_height = 0;
-            for x in (0..trees.width()).rev() {
-                from_right.set(x, y, max_height);
-                max_height = cmp::max(max_height, trees.get(x, y));
-            }
-        }
-
-        // FROM_TOP
-        let mut from_top = Array2D::new(trees.width(), trees.height(), Default::default);
-
-        for x in 0..trees.width() {
-            let mut max_height = 0;
-            for y in 0..trees.height() {
-                from_top.set(x, y, max_height);
-                max_height = cmp::max(max_height, trees.get(x, y));
-            }
-        }
-
-        // FROM_BOTTOM
-        let mut from_bottom = Array2D::new(trees.width(), trees.height(), Default::default);
-
-        for x in 0..trees.width() {
-            let mut max_height = 0;
-            for y in (0..trees.height()).rev() {
-                from_bottom.set(x, y, max_height);
-                max_height = cmp::max(max_height, trees.get(x, y));
-            }
-        }
+        let from_left = do_max_height(&trees, from_left);
+        let from_right = do_max_height(&trees, from_right);
+        let from_top = do_max_height(&trees, from_top);
+        let from_bottom = do_max_height(&trees, from_bottom);
 
         println!("from_left\n{from_left:?}");
         println!("from_right\n{from_right:?}");
@@ -152,85 +242,15 @@ fn main() -> Result<(), Error> {
         println!("visible\n{visible:?}");
         println!("num_visible = {num_visible}");
     } else {
-        // FROM_LEFT
-        let mut from_left = Array2D::new(trees.width(), trees.height(), Default::default);
+        let from_left = do_max_dist(&trees, from_left);
+        let from_right = do_max_dist(&trees, from_right);
+        let from_top = do_max_dist(&trees, from_top);
+        let from_bottom = do_max_dist(&trees, from_bottom);
 
-        for y in 0..trees.height() {
-            let mut tree_dists = Vec::new();
-            tree_dists.resize_with(10, || 0); // "at height i, you can see j trees to the left/right/top/bottom
-
-            for x in 0..trees.width() {
-                from_left.set(x, y, tree_dists[(trees.get(x, y) - 1) as usize]);
-
-                for h in 0..10 {
-                    if h <= trees.get(x, y) - 1 {
-                        tree_dists[h as usize] = 1;
-                    } else {
-                        tree_dists[h as usize] += 1;
-                    }
-                }
-            }
-        }
-
-        // FROM_RIGHT
-        let mut from_right = Array2D::new(trees.width(), trees.height(), Default::default);
-
-        for y in 0..trees.height() {
-            let mut tree_dists = Vec::new();
-            tree_dists.resize_with(10, || 0); // "at height i, you can see j trees to the left/right/top/bottom
-
-            for x in (0..trees.width()).rev() {
-                from_right.set(x, y, tree_dists[(trees.get(x, y) - 1) as usize]);
-
-                for h in 0..10 {
-                    if h <= trees.get(x, y) - 1 {
-                        tree_dists[h as usize] = 1;
-                    } else {
-                        tree_dists[h as usize] += 1;
-                    }
-                }
-            }
-        }
-
-        // FROM_TOP
-        let mut from_top = Array2D::new(trees.width(), trees.height(), Default::default);
-
-        for x in 0..trees.width() {
-            let mut tree_dists = Vec::new();
-            tree_dists.resize_with(10, || 0); // "at height i, you can see j trees to the left/right/top/bottom
-
-            for y in 0..trees.height() {
-                from_top.set(x, y, tree_dists[(trees.get(x, y) - 1) as usize]);
-
-                for h in 0..10 {
-                    if h <= trees.get(x, y) - 1 {
-                        tree_dists[h as usize] = 1;
-                    } else {
-                        tree_dists[h as usize] += 1;
-                    }
-                }
-            }
-        }
-
-        // FROM_BOTTOM
-        let mut from_bottom = Array2D::new(trees.width(), trees.height(), Default::default);
-
-        for x in 0..trees.width() {
-            let mut tree_dists = Vec::new();
-            tree_dists.resize_with(10, || 0); // "at height i, you can see j trees to the left/right/top/bottom
-
-            for y in (0..trees.height()).rev() {
-                from_bottom.set(x, y, tree_dists[(trees.get(x, y) - 1) as usize]);
-
-                for h in 0..10 {
-                    if h <= trees.get(x, y) - 1 {
-                        tree_dists[h as usize] = 1;
-                    } else {
-                        tree_dists[h as usize] += 1;
-                    }
-                }
-            }
-        }
+        println!("from_left\n{from_left:?}");
+        println!("from_right\n{from_right:?}");
+        println!("from_top\n{from_top:?}");
+        println!("from_bottom\n{from_bottom:?}");
 
         let mut best_pos_score = None;
 
@@ -240,21 +260,17 @@ fn main() -> Result<(), Error> {
                     * from_right.get(x, y) as usize
                     * from_top.get(x, y) as usize
                     * from_bottom.get(x, y) as usize;
-                if let Some((best_score, best_pos)) = &mut best_pos_score {
+                if let Some((best_pos, best_score)) = &mut best_pos_score {
                     if score > *best_score {
                         *best_pos = (x, y);
                         *best_score = score;
                     }
                 } else {
-                    best_pos_score = Some((score, (x, y)));
+                    best_pos_score = Some(((x, y), score));
                 }
             }
         }
 
-        println!("from_left\n{from_left:?}");
-        println!("from_right\n{from_right:?}");
-        println!("from_top\n{from_top:?}");
-        println!("from_bottom\n{from_bottom:?}");
         println!("best_pos_score = {best_pos_score:?}");
     }
 
