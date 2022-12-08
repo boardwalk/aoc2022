@@ -1,0 +1,9 @@
+[package]
+name = "day08"
+version = "0.1.0"
+authors = ["Dan Skorupski <boardwalk@ersatsz.com>"]
+edition = "2021"
+
+[dependencies]
+anyhow = "1"
+regex = "1"
