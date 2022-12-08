@@ -7,25 +7,6 @@ use std::{cmp, fmt};
 
 const PART1: bool = false;
 
-struct Array2D {
-    data: Vec<u8>,
-    width: usize,
-}
-
-impl fmt::Debug for Array2D {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for y in 0..self.height() {
-            for x in 0..self.width() {
-                write!(f, "{:02} ", self.get(x, y))?;
-            }
-
-            f.write_str("\n")?;
-        }
-
-        Ok(())
-    }
-}
-
 enum Action {
     Visit(usize, usize),
     Reset,
@@ -100,7 +81,7 @@ where
     F: FnOnce(usize, usize) -> I,
     I: Iterator<Item = Action>,
 {
-    let mut res = Array2D::new(arr.width(), arr.height(), || 0);
+    let mut res = Array2D::new(arr.width(), arr.height());
     let mut max_height = 0;
 
     for action in f(arr.width(), arr.height()) {
@@ -123,7 +104,7 @@ where
     F: FnOnce(usize, usize) -> I,
     I: Iterator<Item = Action>,
 {
-    let mut res = Array2D::new(arr.width(), arr.height(), || 0);
+    let mut res = Array2D::new(arr.width(), arr.height());
     let mut tree_dists = Vec::new();
     tree_dists.resize(10, 0);
 
@@ -151,13 +132,29 @@ where
     res
 }
 
+struct Array2D {
+    data: Vec<u8>,
+    width: usize,
+}
+
+impl fmt::Debug for Array2D {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for y in 0..self.height() {
+            for x in 0..self.width() {
+                write!(f, "{:02} ", self.get(x, y))?;
+            }
+
+            f.write_str("\n")?;
+        }
+
+        Ok(())
+    }
+}
+
 impl Array2D {
-    pub fn new<F>(width: usize, height: usize, f: F) -> Self
-    where
-        F: FnMut() -> u8,
-    {
+    pub fn new(width: usize, height: usize) -> Self {
         let mut data = Vec::new();
-        data.resize_with(width * height, f);
+        data.resize(width * height, 0);
         Self { data, width }
     }
 
@@ -222,7 +219,7 @@ fn main() -> Result<(), Error> {
         println!("from_top\n{from_top:?}");
         println!("from_bottom\n{from_bottom:?}");
 
-        let mut visible = Array2D::new(trees.width(), trees.height(), Default::default);
+        let mut visible = Array2D::new(trees.width(), trees.height());
         let mut num_visible = 0;
 
         for x in 0..trees.width() {
