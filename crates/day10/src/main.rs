@@ -13,6 +13,15 @@ impl Instr {
             Self::Addx(_) => 2,
         }
     }
+
+    fn execute(self, x: &mut i32) {
+        match self {
+            Self::Noop => (),
+            Self::Addx(value) => {
+                *x += value;
+            }
+        }
+    }
 }
 
 fn main() -> Result<(), Error> {
@@ -53,13 +62,7 @@ fn main() -> Result<(), Error> {
         instr_age += 1;
 
         if instr_age == instr.cycles() {
-            match instr {
-                Instr::Noop => (),
-                Instr::Addx(value) => {
-                    x += value;
-                }
-            }
-
+            instr.execute(&mut x);
             iter.next();
             instr_age = 0;
         }
