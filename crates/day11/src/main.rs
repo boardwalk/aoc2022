@@ -1,20 +1,22 @@
 use anyhow::Error;
 use nom::branch::alt;
 use nom::bytes::complete::tag;
-use nom::character::complete::{alpha1, i32};
+use nom::character::complete::{alpha1, u64};
 use nom::multi::separated_list1;
 use nom::IResult;
 use std::collections::HashMap;
 use std::io::Read;
 
+const PART1: bool = false;
+
 #[derive(Debug)]
 enum Operand {
     Var(String),
-    Const(i32),
+    Const(u64),
 }
 
 impl Operand {
-    fn resolve(&self, vars: &HashMap<String, i32>) -> i32 {
+    fn resolve(&self, vars: &HashMap<String, u64>) -> u64 {
         match self {
             Self::Var(name) => vars.get(name).copied().expect("Undefined variable"),
             Self::Const(value) => *value,
@@ -29,7 +31,7 @@ enum Operator {
 }
 
 impl Operator {
-    fn execute(&self, left: i32, right: i32) -> i32 {
+    fn execute(&self, left: u64, right: u64) -> u64 {
         match self {
             Self::Add => left + right,
             Self::Mul => left * right,
@@ -45,7 +47,7 @@ struct Expr {
 }
 
 impl Expr {
-    fn eval(&self, vars: &HashMap<String, i32>) -> i32 {
+    fn eval(&self, vars: &HashMap<String, u64>) -> u64 {
         let left = self.left.resolve(vars);
         let right = self.right.resolve(vars);
         self.oper.execute(left, right)
@@ -54,18 +56,17 @@ impl Expr {
 
 #[derive(Debug)]
 struct Monkey {
-    num: i32,
-    initial_items: Vec<i32>,
+    initial_items: Vec<u64>,
     oper: Expr,
-    test_divisor: i32,
-    true_monkey: i32,
-    false_monkey: i32,
+    test_divisor: u64,
+    true_monkey: u64,
+    false_monkey: u64,
 }
 
 #[derive(Debug)]
 struct MonkeyState {
-    items: Vec<i32>,
-    inspect_count: i32,
+    items: Vec<u64>,
+    inspect_count: u64,
 }
 
 fn operand_var(input: &str) -> IResult<&str, Operand> {
@@ -74,7 +75,7 @@ fn operand_var(input: &str) -> IResult<&str, Operand> {
 }
 
 fn operand_const(input: &str) -> IResult<&str, Operand> {
-    let (input, value) = i32(input)?;
+    let (input, value) = u64(input)?;
     Ok((input, Operand::Const(value)))
 }
 
@@ -105,22 +106,21 @@ fn expr(input: &str) -> IResult<&str, Expr> {
 
 fn monkey(input: &str) -> IResult<&str, Monkey> {
     let (input, _) = tag("Monkey ")(input)?;
-    let (input, num) = i32(input)?;
+    let (input, _) = u64(input)?;
     let (input, _) = tag(":\n  Starting items: ")(input)?;
-    let (input, initial_items) = separated_list1(tag(", "), i32)(input)?;
+    let (input, initial_items) = separated_list1(tag(", "), u64)(input)?;
     let (input, _) = tag("\n  Operation: new = ")(input)?;
     let (input, oper) = expr(input)?;
     let (input, _) = tag("\n  Test: divisible by ")(input)?;
-    let (input, test_divisor) = i32(input)?;
+    let (input, test_divisor) = u64(input)?;
     let (input, _) = tag("\n    If true: throw to monkey ")(input)?;
-    let (input, true_monkey) = i32(input)?;
+    let (input, true_monkey) = u64(input)?;
     let (input, _) = tag("\n    If false: throw to monkey ")(input)?;
-    let (input, false_monkey) = i32(input)?;
+    let (input, false_monkey) = u64(input)?;
 
     Ok((
         input,
         Monkey {
-            num,
             initial_items,
             oper,
             test_divisor,
@@ -134,13 +134,18 @@ fn main() -> Result<(), Error> {
     let mut buf = String::new();
     std::io::stdin().read_to_string(&mut buf)?;
 
-    let (_input, mut monkeys) = match separated_list1(tag("\n\n"), monkey)(&buf) {
+    let (_input, monkeys) = match separated_list1(tag("\n\n"), monkey)(&buf) {
         Ok(monkeys) => monkeys,
         Err(err) => {
             println!("{:?}", err);
             return Err(Error::msg("Parsing failed"));
         }
     };
+
+    let modulo = monkeys
+        .iter()
+        .fold(1, |acc, monkey| acc * monkey.test_divisor);
+    println!("modulo: {modulo}");
 
     let mut states = monkeys
         .iter()
@@ -150,7 +155,9 @@ fn main() -> Result<(), Error> {
         })
         .collect::<Vec<_>>();
 
-    for _round in 0..20 {
+    let nrounds = if PART1 { 20 } else { 10000 };
+
+    for _round in 0..nrounds {
         for (monkey_num, monkey) in monkeys.iter().enumerate() {
             let items = std::mem::take(&mut states[monkey_num].items);
 
@@ -158,13 +165,15 @@ fn main() -> Result<(), Error> {
                 // Update worry
                 let mut vars = HashMap::new();
                 vars.insert("old".to_owned(), item);
-                item = monkey.oper.eval(&vars);
+                item = monkey.oper.eval(&vars) % modulo;
 
                 // Update total inspection count
                 states[monkey_num].inspect_count += 1;
 
-                // Drop worry level
-                item /= 3;
+                if PART1 {
+                    // Drop worry level
+                    item /= 3;
+                }
 
                 // Pass item to next monkey
                 let target_monkey = if item % monkey.test_divisor == 0 {
@@ -185,10 +194,10 @@ fn main() -> Result<(), Error> {
 
     counts.sort_unstable_by(|a, b| b.cmp(a));
 
-    let monkey_business = counts.iter().take(2).fold(1, |acc, count| acc * count);
-
     println!("{:?}", monkeys);
     println!("{:?}", states);
+
+    let monkey_business = counts.iter().take(2).fold(1, |acc, count| acc * count);
     println!("{:?}", monkey_business);
 
     Ok(())
