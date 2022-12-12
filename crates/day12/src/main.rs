@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use anyhow::Error;
 use std::fmt;
 
@@ -72,15 +70,6 @@ enum Direction {
 
 impl Direction {
     const ALL: [Self; 4] = [Self::Left, Self::Right, Self::Up, Self::Down];
-
-    fn opposite(self) -> Self {
-        match self {
-            Self::Left => Self::Right,
-            Self::Right => Self::Left,
-            Self::Up => Self::Down,
-            Self::Down => Self::Up,
-        }
-    }
 }
 
 fn calc_pos(index: usize, width: usize) -> Position {
@@ -180,10 +169,6 @@ impl HeightMap {
     pub fn get(&self, pos: Position) -> u8 {
         self.data[pos.x + pos.y * self.width]
     }
-
-    pub fn set(&mut self, pos: Position, v: u8) {
-        self.data[pos.x + pos.y * self.width] = v;
-    }
 }
 
 struct TempMap<T> {
@@ -240,14 +225,12 @@ where
 
 #[derive(Clone, Copy, Debug)]
 struct Breadcrumb {
-    next: Option<Direction>,
     dist: u32,
 }
 
 struct WorkItem {
-    position: Position,      // current position
-    next: Option<Direction>, // how you got to the current position (working backwards from end). if none this is the end itself
-    dist: u32,               // distance from the end (the end itself has dist 0)
+    position: Position, // current position
+    dist: u32,          // distance from the end (the end itself has dist 0)
 }
 
 fn main() -> Result<(), Error> {
@@ -258,7 +241,6 @@ fn main() -> Result<(), Error> {
 
     let mut work_queue = vec![WorkItem {
         position: heights.end_pos(),
-        next: None,
         dist: 0,
     }];
 
@@ -275,13 +257,7 @@ fn main() -> Result<(), Error> {
         }
 
         // update crumb
-        crumbs.set(
-            work.position,
-            Some(Breadcrumb {
-                next: work.next,
-                dist: work.dist,
-            }),
-        );
+        crumbs.set(work.position, Some(Breadcrumb { dist: work.dist }));
 
         // expand search in all directions
         for direction in Direction::ALL {
@@ -294,7 +270,6 @@ fn main() -> Result<(), Error> {
 
                 work_queue.push(WorkItem {
                     position,
-                    next: Some(direction.opposite()),
                     dist: work.dist + 1,
                 });
             }
