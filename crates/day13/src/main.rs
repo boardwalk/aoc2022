@@ -48,7 +48,10 @@ fn value_pairs(input: &str) -> IResult<&str, Vec<(Value, Value)>> {
 }
 
 fn all_values(input: &str) -> IResult<&str, Vec<Value>> {
-    separated_list0(multispace0, value)(input)
+    let (input, values) = separated_list0(multispace0, value)(input)?;
+    let (input, _) = multispace0(input)?;
+    let (input, _) = eof(input)?;
+    Ok((input, values))
 }
 
 fn ordered(left: &Value, right: &Value) -> Ordering {
