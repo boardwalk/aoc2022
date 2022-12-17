@@ -1,0 +1,10 @@
+[package]
+name = "day14"
+version = "0.1.0"
+authors = ["Dan Skorupski <boardwalk@ersatsz.com>"]
+edition = "2021"
+
+[dependencies]
+anyhow = "1"
+itertools = "0.10"
+nom = "7"
